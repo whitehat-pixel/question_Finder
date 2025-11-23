@@ -1,10 +1,4 @@
-<<<<<<< HEAD
 flask
 pdfplumber
 scikit-learn
 gunicorn
-=======
-flask
-pdfplumber
-scikit-learn
->>>>>>> 1f1b677d701169c98773d547276e28fee5198b0d
