@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>PYQ ChatGPT</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="app-shell">
+    <div class="chat-header">
+      <div class="chat-title">PYQ Chatbot</div>
+      <div class="chat-subtitle">Ask a topic from your OS syllabus</div>
+    </div>
+
+    <div id="chat-messages" class="chat-messages"></div>
+
+    <div class="chat-input-bar">
+      <div class="chat-input-inner">
+        <input id="user-input" type="text" placeholder="Ask about a topic, e.g. 'demand paging', 'system calls'">
+        <button id="send-btn">➤</button>
+      </div>
+      <div class="chat-hint">This bot searches your PYQ PDFs and shows related questions.</div>
+    </div>
+  </div>
+
+  <script>
+    const messagesContainer = document.getElementById("chat-messages");
+    const input = document.getElementById("user-input");
+    const sendBtn = document.getElementById("send-btn");
+
+    function appendMessage(text, role) {
+      const wrap = document.createElement("div");
+      wrap.className = "msg-row " + (role === "user" ? "msg-row-user" : "msg-row-bot");
+
+      const bubble = document.createElement("div");
+      bubble.className = "msg-bubble " + (role === "user" ? "msg-user" : "msg-bot");
+      bubble.innerHTML = text;
+
+      wrap.appendChild(bubble);
+      messagesContainer.appendChild(wrap);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    function sendMessage() {
+      const message = input.value.trim();
+      if (!message) return;
+
+      appendMessage(message, "user");
+      input.value = "";
+
+      fetch("/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message })
+      })
+      .then(res => res.json())
+      .then(data => {
+        const answers = data.answers || [];
+        if (answers.length === 0) {
+          appendMessage("I couldn't find questions for that topic.", "bot");
+          return;
+        }
+        let html = "<strong>Related questions:</strong><br>";
+        answers.forEach(a => {
+          html += "<div class='qa-block'>" +
+                    "<div class='qa-text'>" + a.text + "</div>" +
+                    "<div class='qa-source'>" + a.source + "</div>" +
+                  "</div>";
+        });
+        appendMessage(html, "bot");
+      })
+      .catch(() => {
+        appendMessage("Error searching your questions.", "bot");
+      });
+    }
+
+    sendBtn.addEventListener("click", sendMessage);
+    input.addEventListener("keydown", e => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    appendMessage("Hi! Ask me any OS topic (e.g. 'CPU scheduling', 'system calls', 'paging') and I’ll show matching PYQ questions.", "bot");
+  </script>
+</body>
+</html>

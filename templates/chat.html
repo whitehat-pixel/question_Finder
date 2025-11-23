@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>StudyBot – PYQ Chat</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="app-bg">
+    <div class="app-shell">
+      <header class="chat-header">
+        <div class="brand">
+          <div class="brand-logo">S</div>
+          <div class="brand-text">
+            <div class="brand-title">StudyBot</div>
+            <div class="brand-subtitle">PYQ Question Finder</div>
+          </div>
+        </div>
+      </header>
+
+      <main id="chat-messages" class="chat-messages"></main>
+
+      <div id="typing-indicator" class="typing-indicator hidden">
+        <div class="bot-avatar small">S</div>
+        <div class="typing-dots">
+          <span></span><span></span><span></span>
+        </div>
+        <span class="typing-text">Bot is thinking…</span>
+      </div>
+
+      <footer class="chat-input-bar">
+        <div class="chat-input-inner">
+          <textarea id="user-input"
+                    rows="1"
+                    placeholder="Ask about a topic like ‘demand paging’, ‘system calls’, ‘CPU scheduling’…"></textarea>
+          <button id="send-btn" title="Send">➤</button>
+        </div>
+        <div class="chat-hint">
+          StudyBot searches your OS PYQ PDFs and shows the most related questions. Try typing a unit topic.
+        </div>
+      </footer>
+    </div>
+  </div>
+
+  <script>
+    const messagesContainer = document.getElementById("chat-messages");
+    const input = document.getElementById("user-input");
+    const sendBtn = document.getElementById("send-btn");
+    const typingIndicator = document.getElementById("typing-indicator");
+
+    function appendMessage(text, role) {
+      const row = document.createElement("div");
+      row.className = "msg-row " + (role === "user" ? "msg-row-user" : "msg-row-bot");
+
+      const avatar = document.createElement("div");
+      avatar.className = "avatar " + (role === "user" ? "avatar-user" : "avatar-bot");
+      avatar.textContent = role === "user" ? "U" : "S";
+
+      const bubble = document.createElement("div");
+      bubble.className = "msg-bubble " + (role === "user" ? "msg-user" : "msg-bot");
+      bubble.innerHTML = text;
+
+      row.appendChild(avatar);
+      row.appendChild(bubble);
+      messagesContainer.appendChild(row);
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    function formatAnswers(answers) {
+      if (!answers || answers.length === 0) {
+        return "I couldn't find questions for that topic. Try a different keyword or a more specific term.";
+      }
+      let html = "<div class='bot-title'>Related PYQ questions:</div>";
+      answers.forEach(a => {
+        html += `
+          <div class="qa-block">
+            <div class="qa-text">${a.text}</div>
+            <div class="qa-meta">
+              <span class="qa-source">${a.source}</span>
+              <span class="qa-score">match ${(a.score * 100).toFixed(0)}%</span>
+            </div>
+          </div>
+        `;
+      });
+      return html;
+    }
+
+    function showTyping(show) {
+      if (show) {
+        typingIndicator.classList.remove("hidden");
+      } else {
+        typingIndicator.classList.add("hidden");
+      }
+      messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+
+    function sendMessage() {
+      const message = input.value.trim();
+      if (!message) return;
+
+      appendMessage(message, "user");
+      input.value = "";
+      autoResize();
+      showTyping(true);
+
+      fetch("/ask", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message })
+      })
+      .then(res => res.json())
+      .then(data => {
+        showTyping(false);
+        const html = formatAnswers(data.answers);
+        appendMessage(html, "bot");
+      })
+      .catch(() => {
+        showTyping(false);
+        appendMessage("There was an error while searching your questions. Please try again.", "bot");
+      });
+    }
+
+    function autoResize() {
+      input.style.height = "auto";
+      input.style.height = Math.min(input.scrollHeight, 120) + "px";
+    }
+
+    sendBtn.addEventListener("click", sendMessage);
+
+    input.addEventListener("keydown", e => {
+      if (e.key === "Enter" && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    input.addEventListener("input", autoResize);
+
+    // Initial welcome message
+    appendMessage(
+      "Hi, I’m <strong>StudyBot</strong> 🤖<br>" +
+      "Ask me any <strong>OS syllabus topic</strong> like <em>‘system calls’</em>, " +
+      "<em>‘demand paging’</em>, <em>‘CPU scheduling’</em>, and I’ll show you related PYQ questions.",
+      "bot"
+    );
+  </script>
+</body>
+</html>
